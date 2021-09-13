@@ -1,0 +1,142 @@
+---
+title: "JFK NLP"
+author: "Fahim Karim"
+date: "4/6/2021"
+output:
+  ioslides_presentation: default
+  slidy_presentation: default
+  beamer_presentation: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## R Markdown
+
+This is an R Markdown presentation. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
+
+When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document.
+
+
+## Slide with R Output
+
+```{r, echo = TRUE}
+install.packages("textreadr")
+install.packages("devtools")
+install.packages("tidyverse")
+install.packages("stringr")
+install.packages("tidytext")
+install.packages("dplyr")
+install.packages("reshape2")
+install.packages("igraph")
+install.packages("ggraph")
+
+library(devtools)
+library(tidyverse)
+library(stringr)
+library(tidytext)
+library(dplyr)
+library(reshape2)
+library(igraph)
+library(ggraph)
+library(shiny)
+
+
+
+library(textreadr)
+
+
+Berlin <-read_docx("Berlin.docx")
+Civil <-read_docx("Civil.docx")
+Congress <-read_docx("Congress.docx")
+Cuban <-read_docx("Cuban.docx")
+
+Hill <-read_docx("Hill.docx")
+Houston <-read_docx("Houston.docx")
+install.packages("devtools")
+
+Inaugural <-read_docx("Inaugural.docx")
+Independence <-read_docx("Independence.docx")
+
+Irish <-read_docx("Irish.docx")
+Nomination <-read_docx("Nomination.docx")
+Nuclear <-read_docx("Nuclear.docx")
+Rice <-read_docx("Rice.docx")
+
+Vanderbilt <-read_docx("Vanderbilt.docx")
+Washington <-read_docx("Washington.docx")
+American <-read_docx("American.docx")
+Amherst <-read_docx("Amherst.docx")
+
+View(Rice)
+
+
+
+titles <- c("ACCEPTANCE OF DEMOCRATIC NOMINATION FOR PRESIDENT","ADDRESS TO THE GREATER HOUSTON MINISTERIAL ASSOCIATION","THE CITY UPON A HILL SPEECH",
+            "INAUGURAL ADDRESS", "ADDRESS TO JOINT SESSION OF CONGRESS", "ADDRESS AT UNIVERSITY OF WASHINGTON", "ADDRESS AT INDEPENDENCE HALL"
+            ,"ADDRESS AT RICE UNIVERSITY ON THE NATION'S SPACE EFFORT", "ADDRESS DURING THE CUBAN MISSILE CRISIS"
+            ,"ADDRESS AT VANDERBILT UNIVERSITY", "AMERICAN UNIVERSITY COMMENCEMENT ADDRESS", "TELEVISED ADDRESS TO THE NATION ON CIVIL RIGHTS",
+            "REMARKS AT THE RUDOLPH WILDE PLATZ, BERLIN","ADDRESS BEFORE THE IRISH PARLIAMENT",
+            "TELEVISED ADDRESS ON NUCLEAR TEST BAN TREATY", "REMARKS AT AMHERST COLLEGE ON THE ARTS")
+
+
+speeches <- list(Nomination,Houston,Hill,Inaugural,Congress,Washington,Independence,Rice,Cuban,Vanderbilt,American,Civil,Berlin,Irish,Nuclear,Amherst) %>%
+  set_names(titles) %>%
+map_df(as_tibble, .id = "speech") %>% 
+  mutate(speech = factor(speech, levels = titles)) %>%
+  drop_na(value) %>%
+  # create a chapter id column
+  group_by(speech) %>%
+  
+  unnest_tokens(word, value) %>%
+  ungroup()
+
+speeches
+
+#Plot Wrod Frequency for each Speech
+
+speeches %>%
+  # delete stopwords
+  anti_join(stop_words) %>%
+  # summarize count per word per speech
+  count(speech, word, sort = TRUE) %>%
+  # get top 15 words per speech
+  group_by(speech) %>%
+  top_n(15) %>%
+  ungroup() %>%
+  mutate(word = reorder_within(word, n, speech)) %>%
+  # create barplot
+  ggplot(aes(x = word, y = n, fill = speech)) + 
+  geom_col(color = "black") +
+  scale_x_reordered() +
+  labs(title = "Most frequent words in JFK Speeches",
+       x = NULL,
+       y = "Word count") +
+  facet_wrap(~ speech, scales = "free") +
+  coord_flip() +
+  theme(legend.position = "none") 
+
+
+#Sentiment Analysis
+
+(jfk_bing <- speeches %>% 
+    inner_join(get_sentiments("bing")))
+
+#Viz Sentiment analysis
+
+speeches %>%
+  group_by(speech) %>% 
+  mutate(word_count = 1:n(),
+         index = word_count %/% 20 + 100) %>% 
+  inner_join(get_sentiments("bing")) %>%
+  count(speech, index = index , sentiment) %>%
+  ungroup() %>%
+  spread(sentiment, n, fill = 0) %>%
+  mutate(sentiment = positive - negative,
+         speech = factor(speech, levels = titles)) %>%
+  ggplot(aes(index, sentiment, fill = speech)) +
+  geom_bar(alpha = 100, stat = "identity", show.legend = FALSE) +
+  facet_wrap(~ speech, ncol = 2, scales = "free_x")
+```
+
